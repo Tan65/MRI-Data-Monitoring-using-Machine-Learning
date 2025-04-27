@@ -1,0 +1,76 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+
+# Step 1: Simulate synthetic MRI feature data
+np.random.seed(42)
+
+n_samples = 1000
+# Assume MRI feature values like intensity, texture, etc.
+feature_1 = np.random.normal(loc=100, scale=20, size=n_samples)  # intensity mean
+feature_2 = np.random.normal(loc=50, scale=10, size=n_samples)   # texture variation
+feature_3 = np.random.normal(loc=30, scale=5, size=n_samples)    # gradient features
+feature_4 = np.random.normal(loc=70, scale=15, size=n_samples)   # sharpness
+
+# Label: 0 = healthy, 1 = abnormal
+labels = (feature_1 + feature_2 + np.random.normal(0, 20, n_samples)) > 160
+labels = labels.astype(int)
+
+# Build dataframe
+data = pd.DataFrame({
+    'Feature1_IntensityMean': feature_1,
+    'Feature2_TextureVar': feature_2,
+    'Feature3_Gradient': feature_3,
+    'Feature4_Sharpness': feature_4,
+    'Label': labels
+})
+
+print(data.head())
+
+# Step 2: Prepare data
+X = data.drop('Label', axis=1)
+y = data['Label']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Scale features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Step 3: Build simple Neural Network model
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(32, activation='relu', input_shape=(X_train_scaled.shape[1],)),
+    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Step 4: Train the model
+history = model.fit(X_train_scaled, y_train, epochs=50, batch_size=16, validation_split=0.2, verbose=0)
+
+# Step 5: Evaluate
+y_pred = model.predict(X_test_scaled).flatten()
+y_pred_classes = (y_pred > 0.5).astype(int)
+
+print("\nClassification Report:\n")
+print(classification_report(y_test, y_pred_classes))
+
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred_classes))
+
+# Step 6: Plot training curves
+plt.figure(figsize=(8,5))
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Training Progress')
+plt.legend()
+plt.grid(True)
+plt.show()
